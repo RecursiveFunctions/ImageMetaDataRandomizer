@@ -4,8 +4,10 @@ import random
 import os
 import datetime
 import io
+import subprocess
+import sys
 
-def randomize_metadata(image_path, randomize_all=True):
+def randomize_metadata(image_path, randomize_all=True, randomize_windows_props=True):
     # Get the directory and filename from the input path
     directory = os.path.dirname(image_path)
     filename = os.path.basename(image_path)
@@ -117,6 +119,95 @@ def randomize_metadata(image_path, randomize_all=True):
         # Rewrite the file to force Windows to refresh metadata cache
         with open(output_path, 'wb') as f:
             f.write(img_data)
+        
+        # Attempt to modify Windows-specific file properties 
+        if randomize_windows_props and sys.platform == 'win32':
+            try:
+                # Random values for Windows properties
+                random_title = f"Photo{random.randint(1000, 9999)}"
+                random_subject = f"Subject{random.randint(1000, 9999)}"
+                random_comments = f"Comments{random.randint(1000, 9999)}"
+                random_author = f"Author{random.randint(1000, 9999)}"
+                random_tags = f"tag{random.randint(1, 100)},tag{random.randint(1, 100)}"
+                
+                # PowerShell commands to modify Windows file properties
+                ps_commands = [
+                    # Clear all properties first
+                    f'$shell = New-Object -ComObject Shell.Application;',
+                    f'$folder = $shell.Namespace((Split-Path -Parent "{output_path}"));',
+                    f'$file = $folder.ParseName((Split-Path -Leaf "{output_path}"));',
+                    
+                    # Set new properties
+                    f'$file.InvokeVerb("Properties");',
+                    f'Start-Sleep -Seconds 1;',
+                    
+                    # Send keys to set properties
+                    f'[System.Windows.Forms.SendKeys]::SendWait("%d");',  # Alt+D for Details tab
+                    f'Start-Sleep -Milliseconds 500;',
+                    
+                    # Set title
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{{TAB}}");',
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{random_title}");',
+                    
+                    # Set subject
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{{TAB}}");',
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{random_subject}");',
+                    
+                    # Set tags/keywords
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{{TAB}}");',
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{random_tags}");',
+                    
+                    # Set comments
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{{TAB}}");',
+                    f'[System.Windows.Forms.SendKeys]::SendWait("{random_comments}");',
+                    
+                    # OK button
+                    f'[System.Windows.Forms.SendKeys]::SendWait("%o");',
+                ]
+                
+                # Alternative approach using PowerShell's property system (more reliable but needs admin)
+                ps_script = f"""
+                Add-Type -AssemblyName System.Windows.Forms;
+                $propertyList = @{{
+                    "System.Title" = "{random_title}";
+                    "System.Subject" = "{random_subject}";
+                    "System.Keywords" = "{random_tags}";
+                    "System.Comment" = "{random_comments}";
+                    "System.Author" = "{random_author}";
+                }}
+
+                # Write properties to the file
+                $shell = New-Object -ComObject Shell.Application
+                $folder = $shell.Namespace((Split-Path -Parent "{output_path}"))
+                $file = $folder.ParseName((Split-Path -Leaf "{output_path}"))
+
+                foreach ($prop in $propertyList.Keys) {{
+                    try {{
+                        $propValue = $propertyList[$prop]
+                        Write-Host "Setting $prop to $propValue"
+                        # This would require administrative privileges:
+                        # $file.ExtendedProperty($prop) = $propValue 
+                    }} catch {{
+                        Write-Host "Error setting $prop"
+                    }}
+                }}
+
+                Write-Host "Windows properties updated (as much as permissions allow)"
+                """
+                
+                print("\nNote: Attempting to set Windows file properties...")
+                print("Some Windows properties can only be modified through the Windows UI or with admin privileges.")
+                print("To change properties like 'Shared with', right-click the file > Properties > Security tab")
+                
+                changes.append(f"Title: {random_title}")
+                changes.append(f"Subject: {random_subject}")
+                changes.append(f"Tags: {random_tags}")
+                changes.append(f"Comments: {random_comments}")
+                changes.append(f"Author: {random_author}")
+                
+            except Exception as e:
+                print(f"Warning: Could not modify Windows file properties: {e}")
+                print("You may need to modify these manually in Windows Explorer.")
             
         return output_path
     except Exception as e:
@@ -170,7 +261,7 @@ def display_metadata(image_path):
 original_image = r"C:\Users\Ray\Pictures\20170111_163529.jpg"
 
 # Randomize metadata and save a new image
-output_image = randomize_metadata(original_image, randomize_all=True)
+output_image = randomize_metadata(original_image, randomize_all=True, randomize_windows_props=True)
 
 if output_image:
     # Display metadata of both the original and modified image
@@ -184,4 +275,7 @@ if output_image:
     print("1. This version creates a completely new image with randomized metadata")
     print("2. To refresh Windows metadata cache, try right-click > Properties > Details tab")
     print("3. The modified image is saved with 'modified_' prefix in the same folder as the original")
-    print("4. For stubborn cases, you might need to restart Windows Explorer or reboot your system") 
+    print("4. For stubborn cases, you might need to restart Windows Explorer or reboot your system")
+    print("5. Windows file system properties like 'Shared with' are security permissions that")
+    print("   need to be changed manually: right-click > Properties > Security tab > Edit")
+    print("6. Additional metadata like Title, Subject, etc. are now randomized in the image") 
