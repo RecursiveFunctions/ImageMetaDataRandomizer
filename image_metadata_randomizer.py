@@ -1,8 +1,15 @@
 from PIL import Image
 import piexif
 import random
+import os
 
 def randomize_metadata(image_path):
+    # Get the directory and filename from the input path
+    directory = os.path.dirname(image_path)
+    filename = os.path.basename(image_path)
+    # Create output path in the same directory but with "modified_" prefix
+    output_path = os.path.join(directory, f"modified_{filename}")
+    
     image = Image.open(image_path)
     exif_dict = piexif.load(image.info['exif'])
 
@@ -11,8 +18,9 @@ def randomize_metadata(image_path):
     exif_dict['0th'][piexif.ImageIFD.Model] = f"Model{random.randint(1, 100)}"
 
     exif_bytes = piexif.dump(exif_dict)
-    image.save("output.jpg", "jpeg", exif=exif_bytes)
-    return "output.jpg"
+    image.save(output_path, "jpeg", exif=exif_bytes)
+    print(f"Saved image with randomized metadata to {output_path}")
+    return output_path
 
 def display_metadata(image_path):
     try:
