@@ -6,6 +6,8 @@ import datetime
 import io
 import subprocess
 import sys
+import argparse
+import glob
 
 def randomize_metadata(image_path, randomize_all=True, randomize_windows_props=True):
     # Get the directory and filename from the input path
@@ -101,6 +103,61 @@ def randomize_metadata(image_path, randomize_all=True, randomize_windows_props=T
             random_id = ''.join(random.choice('0123456789ABCDEF') for _ in range(10))
             exif_dict['Exif'][piexif.ExifIFD.ImageUniqueID] = random_id.encode('ascii')
             changes.append(f"ImageUniqueID: {random_id}")
+            
+            # Randomize GPS data
+            # Generate random GPS coordinates
+            # Latitude between -90 and 90 degrees
+            random_lat = random.uniform(-90, 90)
+            # Longitude between -180 and 180 degrees
+            random_long = random.uniform(-180, 180)
+            
+            # Convert to EXIF GPS format (degrees, minutes, seconds)
+            def convert_to_dms(coordinate):
+                # Absolute value of the coordinate
+                coordinate_abs = abs(coordinate)
+                # Degrees is the integer part
+                degrees = int(coordinate_abs)
+                # Minutes is the fractional part * 60
+                minutes_float = (coordinate_abs - degrees) * 60
+                minutes = int(minutes_float)
+                # Seconds is the fractional part of minutes * 60
+                seconds = int((minutes_float - minutes) * 60 * 100)
+                return (degrees, 1), (minutes, 1), (seconds, 100)
+            
+            # Convert latitude and longitude to degrees, minutes, seconds format
+            lat_dms = convert_to_dms(random_lat)
+            long_dms = convert_to_dms(random_long)
+            
+            # Add GPS tags
+            # GPS version tag
+            exif_dict['GPS'][piexif.GPSIFD.GPSVersionID] = (2, 2, 0, 0)
+            
+            # Latitude tags
+            exif_dict['GPS'][piexif.GPSIFD.GPSLatitudeRef] = 'N' if random_lat >= 0 else 'S'
+            exif_dict['GPS'][piexif.GPSIFD.GPSLatitude] = lat_dms
+            
+            # Longitude tags
+            exif_dict['GPS'][piexif.GPSIFD.GPSLongitudeRef] = 'E' if random_long >= 0 else 'W'
+            exif_dict['GPS'][piexif.GPSIFD.GPSLongitude] = long_dms
+            
+            # Random altitude (0-8848m, with 8848 being the height of Mt. Everest)
+            random_altitude = random.uniform(0, 8848)
+            exif_dict['GPS'][piexif.GPSIFD.GPSAltitudeRef] = 0  # Above sea level
+            exif_dict['GPS'][piexif.GPSIFD.GPSAltitude] = (int(random_altitude * 100), 100)
+            
+            # Random timestamp
+            random_hour = random.randint(0, 23)
+            random_minute = random.randint(0, 59)
+            random_second = random.randint(0, 59)
+            exif_dict['GPS'][piexif.GPSIFD.GPSTimeStamp] = ((random_hour, 1), (random_minute, 1), (random_second, 1))
+            
+            # Random date (use same date as the photo)
+            gps_date_str = random_date.strftime("%Y:%m:%d")
+            exif_dict['GPS'][piexif.GPSIFD.GPSDateStamp] = gps_date_str
+            
+            changes.append(f"GPS Latitude: {random_lat:.6f} ({exif_dict['GPS'][piexif.GPSIFD.GPSLatitudeRef]})")
+            changes.append(f"GPS Longitude: {random_long:.6f} ({exif_dict['GPS'][piexif.GPSIFD.GPSLongitudeRef]})")
+            changes.append(f"GPS Altitude: {random_altitude:.2f}m")
         
         # Dump EXIF data to bytes
         exif_bytes = piexif.dump(exif_dict)
@@ -250,32 +307,196 @@ def display_metadata(image_path):
                 
         if 'GPS' in exif_dict and exif_dict['GPS']:
             print("\nGPS Information:")
-            print("  GPS data present")
+            # Extract GPS coordinates if available
+            lat_ref = long_ref = None
+            latitude = longitude = None
+            
+            if piexif.GPSIFD.GPSLatitudeRef in exif_dict['GPS']:
+                lat_ref = exif_dict['GPS'][piexif.GPSIFD.GPSLatitudeRef]
+                if isinstance(lat_ref, bytes):
+                    lat_ref = lat_ref.decode('ascii', errors='replace')
+            
+            if piexif.GPSIFD.GPSLongitudeRef in exif_dict['GPS']:
+                long_ref = exif_dict['GPS'][piexif.GPSIFD.GPSLongitudeRef]
+                if isinstance(long_ref, bytes):
+                    long_ref = long_ref.decode('ascii', errors='replace')
+            
+            if piexif.GPSIFD.GPSLatitude in exif_dict['GPS']:
+                lat_dms = exif_dict['GPS'][piexif.GPSIFD.GPSLatitude]
+                try:
+                    degrees = lat_dms[0][0] / lat_dms[0][1]
+                    minutes = lat_dms[1][0] / lat_dms[1][1]
+                    seconds = lat_dms[2][0] / lat_dms[2][1]
+                    latitude = degrees + minutes/60 + seconds/3600
+                    if lat_ref == 'S':
+                        latitude = -latitude
+                except (IndexError, ZeroDivisionError):
+                    latitude = None
+            
+            if piexif.GPSIFD.GPSLongitude in exif_dict['GPS']:
+                long_dms = exif_dict['GPS'][piexif.GPSIFD.GPSLongitude]
+                try:
+                    degrees = long_dms[0][0] / long_dms[0][1]
+                    minutes = long_dms[1][0] / long_dms[1][1]
+                    seconds = long_dms[2][0] / long_dms[2][1]
+                    longitude = degrees + minutes/60 + seconds/3600
+                    if long_ref == 'W':
+                        longitude = -longitude
+                except (IndexError, ZeroDivisionError):
+                    longitude = None
+            
+            if latitude is not None and longitude is not None:
+                print(f"  GPS Coordinates: {latitude:.6f}, {longitude:.6f} ({lat_ref}, {long_ref})")
+            
+            if piexif.GPSIFD.GPSAltitude in exif_dict['GPS']:
+                try:
+                    alt = exif_dict['GPS'][piexif.GPSIFD.GPSAltitude]
+                    altitude = alt[0] / alt[1]
+                    alt_ref = exif_dict['GPS'].get(piexif.GPSIFD.GPSAltitudeRef, 0)
+                    altitude_str = f"{altitude:.2f}m"
+                    if alt_ref == 1:  # Below sea level
+                        altitude_str = f"-{altitude_str}"
+                    print(f"  GPS Altitude: {altitude_str}")
+                except (IndexError, ZeroDivisionError):
+                    pass
+            
+            # Display other GPS tags if present
+            for tag, value in exif_dict['GPS'].items():
+                if tag not in [piexif.GPSIFD.GPSLatitude, piexif.GPSIFD.GPSLatitudeRef,
+                              piexif.GPSIFD.GPSLongitude, piexif.GPSIFD.GPSLongitudeRef,
+                              piexif.GPSIFD.GPSAltitude, piexif.GPSIFD.GPSAltitudeRef]:
+                    tag_name = piexif.TAGS['GPS'].get(tag, {}).get('name', str(tag))
+                    if isinstance(value, bytes):
+                        try:
+                            value = value.decode('ascii', errors='replace')
+                        except:
+                            value = str(value)
+                    print(f"  {tag_name}: {value}")
         elif 'GPS' in exif_dict:
             print("\nGPS Information:")
             print("  No GPS data")
     except Exception as e:
         print(f"Error reading metadata: {e}")
 
-# File path for the original image
-original_image = r"C:\Users\Ray\Pictures\20170111_163529.jpg"
-
-# Randomize metadata and save a new image
-output_image = randomize_metadata(original_image, randomize_all=True, randomize_windows_props=True)
-
-if output_image:
-    # Display metadata of both the original and modified image
-    print("\nOriginal image metadata:")
-    display_metadata(original_image)
-
-    print("\nModified image metadata:")
-    display_metadata(output_image)
+def process_images(image_paths, display_before=False, display_after=True, randomize_windows_props=True):
+    """Process multiple images from a list of paths."""
+    results = []
     
-    print("\nPLEASE NOTE: To view the changes in Windows Explorer:")
-    print("1. This version creates a completely new image with randomized metadata")
-    print("2. To refresh Windows metadata cache, try right-click > Properties > Details tab")
-    print("3. The modified image is saved with 'modified_' prefix in the same folder as the original")
-    print("4. For stubborn cases, you might need to restart Windows Explorer or reboot your system")
-    print("5. Windows file system properties like 'Shared with' are security permissions that")
-    print("   need to be changed manually: right-click > Properties > Security tab > Edit")
-    print("6. Additional metadata like Title, Subject, etc. are now randomized in the image") 
+    for image_path in image_paths:
+        if not os.path.exists(image_path):
+            print(f"Error: Image '{image_path}' not found")
+            continue
+            
+        if not image_path.lower().endswith(('.jpg', '.jpeg')):
+            print(f"Warning: '{image_path}' is not a JPEG file. Only JPEG files are supported.")
+            continue
+            
+        if display_before:
+            print("\n=== Original Metadata ===")
+            display_metadata(image_path)
+            
+        output_path = randomize_metadata(image_path, randomize_windows_props=randomize_windows_props)
+        
+        if output_path and display_after:
+            print("\n=== New Randomized Metadata ===")
+            display_metadata(output_path)
+            
+        results.append({
+            'original': image_path,
+            'modified': output_path,
+            'success': output_path is not None
+        })
+    
+    return results
+
+def main():
+    parser = argparse.ArgumentParser(description='Image Metadata Randomizer')
+    
+    # Create a group for mutually exclusive input options
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument('images', nargs='*', help='Path to image file(s)', default=[])
+    input_group.add_argument('--folder', '-f', help='Process all jpg/jpeg files in a folder')
+    
+    # Add other options
+    parser.add_argument('--display-before', '-b', action='store_true', 
+                        help='Display metadata before randomization')
+    parser.add_argument('--display-after', '-a', action='store_true', 
+                        help='Display metadata after randomization (default: True)', default=True)
+    parser.add_argument('--no-windows-props', action='store_true',
+                        help="Don't try to modify Windows-specific properties")
+    
+    args = parser.parse_args()
+    
+    # Check if we need to get images from a folder
+    image_paths = []
+    if args.folder:
+        if not os.path.isdir(args.folder):
+            print(f"Error: Folder '{args.folder}' not found or is not a directory")
+            return
+            
+        # Get all jpg/jpeg files in the folder
+        image_paths = glob.glob(os.path.join(args.folder, '*.jpg'))
+        image_paths.extend(glob.glob(os.path.join(args.folder, '*.jpeg')))
+        
+        if not image_paths:
+            print(f"No jpg/jpeg files found in folder '{args.folder}'")
+            return
+            
+        print(f"Found {len(image_paths)} images in folder '{args.folder}'")
+    else:
+        # Use the images provided as arguments
+        image_paths = args.images
+    
+    # Process the images
+    results = process_images(
+        image_paths, 
+        display_before=args.display_before,
+        display_after=args.display_after,
+        randomize_windows_props=not args.no_windows_props
+    )
+    
+    # Show a summary
+    success_count = sum(1 for r in results if r['success'])
+    if results:
+        print(f"\n====== Summary ======")
+        print(f"Processed {len(results)} images")
+        print(f"Success: {success_count}")
+        print(f"Failed: {len(results) - success_count}")
+
+if __name__ == "__main__":
+    # Check for command line arguments
+    if len(sys.argv) > 1:
+        main()
+    else:
+        # Legacy mode: Process the single image specified in the code
+        original_image = r"C:\path\to\image.jpg"
+        print("=" * 80)
+        print("Image Metadata Randomizer - Command Line Help")
+        print("=" * 80)
+        print("\nNo command line arguments provided. You have two options:")
+        
+        print("\n1. RECOMMENDED: Use command line arguments (examples):")
+        print("   - Process a single image:")
+        print("     python image_metadata_randomizer.py \"C:\\path\\to\\image.jpg\"")
+        print("\n   - Process multiple images:")
+        print("     python image_metadata_randomizer.py \"C:\\path\\to\\image1.jpg\" \"C:\\path\\to\\image2.jpg\"")
+        print("\n   - Process all JPEG images in a folder:")
+        print("     python image_metadata_randomizer.py --folder \"C:\\path\\to\\folder\"")
+        print("\n   - Show original metadata too:")
+        print("     python image_metadata_randomizer.py --display-before \"C:\\path\\to\\image.jpg\"")
+        
+        print("\n2. LEGACY MODE: Edit this script to update the hardcoded path:")
+        print("   - Open this file in a text editor")
+        print("   - Find this line: original_image = r\"C:\\Users\\Ray\\Pictures\\20170111_163529.jpg\"")
+        print("   - Change it to point to your image")
+        print("   - Run the script again without arguments")
+        
+        print("\n" + "=" * 80)
+        print("\nRunning in legacy mode with hardcoded path...")
+        print(f"Processing single image: {original_image}")
+        
+        if os.path.exists(original_image):
+            randomize_metadata(original_image)
+        else:
+            print(f"\nError: Image '{original_image}' not found.")
+            print("Please use command line arguments or update the hardcoded path in the script.") 
