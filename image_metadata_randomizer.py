@@ -2,6 +2,7 @@ from PIL import Image
 import piexif
 import random
 import os
+import datetime
 
 def randomize_metadata(image_path):
     # Get the directory and filename from the input path
@@ -13,13 +14,54 @@ def randomize_metadata(image_path):
     image = Image.open(image_path)
     exif_dict = piexif.load(image.info['exif'])
 
-    # Randomize some metadata fields
-    exif_dict['0th'][piexif.ImageIFD.Make] = f"Camera{random.randint(1, 100)}"
-    exif_dict['0th'][piexif.ImageIFD.Model] = f"Model{random.randint(1, 100)}"
+    # Track changes
+    changes = []
+    
+    # Randomize camera make and model
+    random_make = f"Camera{random.randint(1, 100)}"
+    random_model = f"Model{random.randint(1, 100)}"
+    random_software = f"Software{random.randint(1, 100)}"
+    
+    exif_dict['0th'][piexif.ImageIFD.Make] = random_make.encode('ascii')
+    exif_dict['0th'][piexif.ImageIFD.Model] = random_model.encode('ascii')
+    
+    if piexif.ImageIFD.Software in exif_dict['0th']:
+        exif_dict['0th'][piexif.ImageIFD.Software] = random_software.encode('ascii')
+    
+    changes.append(f"Make: {random_make}")
+    changes.append(f"Model: {random_model}")
+    changes.append(f"Software: {random_software}")
+    
+    # Randomize dates
+    if piexif.ImageIFD.DateTime in exif_dict['0th']:
+        # Generate a random date within the last 2 years
+        random_days = random.randint(1, 730)  # Up to 2 years
+        random_date = (datetime.datetime.now() - datetime.timedelta(days=random_days))
+        random_date_str = random_date.strftime("%Y:%m:%d %H:%M:%S")
+        exif_dict['0th'][piexif.ImageIFD.DateTime] = random_date_str.encode('ascii')
+        changes.append(f"DateTime: {random_date_str}")
+    
+    # Randomize Exif dates
+    if 'Exif' in exif_dict and piexif.ExifIFD.DateTimeOriginal in exif_dict['Exif']:
+        random_days = random.randint(1, 730)
+        random_date = (datetime.datetime.now() - datetime.timedelta(days=random_days))
+        random_date_str = random_date.strftime("%Y:%m:%d %H:%M:%S")
+        exif_dict['Exif'][piexif.ExifIFD.DateTimeOriginal] = random_date_str.encode('ascii')
+        changes.append(f"DateTimeOriginal: {random_date_str}")
+
+    if 'Exif' in exif_dict and piexif.ExifIFD.DateTimeDigitized in exif_dict['Exif']:
+        random_days = random.randint(1, 730)
+        random_date = (datetime.datetime.now() - datetime.timedelta(days=random_days))
+        random_date_str = random_date.strftime("%Y:%m:%d %H:%M:%S")
+        exif_dict['Exif'][piexif.ExifIFD.DateTimeDigitized] = random_date_str.encode('ascii')
+        changes.append(f"DateTimeDigitized: {random_date_str}")
 
     exif_bytes = piexif.dump(exif_dict)
     image.save(output_path, "jpeg", exif=exif_bytes)
     print(f"Saved image with randomized metadata to {output_path}")
+    print("Changed metadata fields:")
+    for change in changes:
+        print(f"  - {change}")
     return output_path
 
 def display_metadata(image_path):
