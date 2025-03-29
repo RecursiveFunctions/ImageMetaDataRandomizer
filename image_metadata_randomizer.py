@@ -12,6 +12,45 @@ def randomize_metadata(image_path):
 
     exif_bytes = piexif.dump(exif_dict)
     image.save("output.jpg", "jpeg", exif=exif_bytes)
+    return "output.jpg"
+
+def display_metadata(image_path):
+    try:
+        image = Image.open(image_path)
+        exif_dict = piexif.load(image.info.get('exif', b''))
+        
+        print(f"Metadata for {image_path}:")
+        if '0th' in exif_dict and exif_dict['0th']:
+            print("Basic Image Information:")
+            for tag, value in exif_dict['0th'].items():
+                tag_name = piexif.TAGS['0th'].get(tag, {}).get('name', str(tag))
+                if isinstance(value, bytes):
+                    try:
+                        value = value.decode('utf-8')
+                    except:
+                        value = str(value)
+                print(f"  {tag_name}: {value}")
+                
+        if 'Exif' in exif_dict and exif_dict['Exif']:
+            print("\nExif Information:")
+            for tag, value in exif_dict['Exif'].items():
+                tag_name = piexif.TAGS['Exif'].get(tag, {}).get('name', str(tag))
+                if isinstance(value, bytes):
+                    try:
+                        value = value.decode('utf-8')
+                    except:
+                        value = str(value)
+                print(f"  {tag_name}: {value}")
+    except Exception as e:
+        print(f"Error reading metadata: {e}")
 
 # Use raw string for file path to avoid unicodeescape error
-randomize_metadata(r"C:\Users\Ray\Pictures\20170111_163529.jpg") 
+original_image = r"C:\Users\Ray\Pictures\20170111_163529.jpg"
+output_image = randomize_metadata(original_image)
+
+# Display metadata of both the original and modified image
+print("\nOriginal image metadata:")
+display_metadata(original_image)
+
+print("\nModified image metadata:")
+display_metadata(output_image) 
