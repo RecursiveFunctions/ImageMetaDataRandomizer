@@ -13,4 +13,5 @@ def randomize_metadata(image_path):
     exif_bytes = piexif.dump(exif_dict)
     image.save("output.jpg", "jpeg", exif=exif_bytes)
 
+# Use raw string for file path to avoid unicodeescape error
 randomize_metadata(r"C:\Users\Ray\Pictures\20170111_163529.jpg") 
