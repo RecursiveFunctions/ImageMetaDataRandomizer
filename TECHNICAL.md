@@ -336,6 +336,33 @@ else:
 
 If no command-line arguments are provided, the tool falls back to using the hardcoded path in the script.
 
+## Graphical User Interface (GUI)
+
+A GUI has been developed using PySide6 to provide a more user-friendly way to interact with the randomizer.
+
+### File: `metadata_gui.py`
+
+- **Framework**: PySide6 (Qt for Python)
+- **Main Window**: `MetadataRandomizerGUI` (inherits from `QWidget`)
+- **Key Components**:
+    - `DragDropArea`: A custom `QLabel` subclass to handle drag-and-drop operations for files and folders.
+    - `QListWidget`: Displays the list of selected files and folders.
+    - `QPushButton`: Buttons for selecting files ("Select Files"), selecting folders ("Select Folder"), and initiating the process ("Randomize Metadata").
+    - `QFileDialog`: Used for browsing and selecting files/folders.
+    - `QVBoxLayout`, `QHBoxLayout`: Used for organizing widgets in the UI.
+    - `QLabel`: Used for text labels and the status bar.
+- **Functionality**:
+    - Allows users to select individual image files or entire folders containing images.
+    - Supports dragging and dropping files/folders directly onto the application window.
+    - Collects all image files from selected items (recursively searching within selected folders).
+    - Calls the core `randomize_metadata` function for each identified image file.
+    - Provides user feedback via status messages and dialog boxes (e.g., success, error messages).
+    - Basic styling is applied for a cleaner appearance.
+
+### Interaction with Core Logic
+
+The GUI's `start_randomization` method gathers the list of target image files from the `QListWidget` (using the `get_all_image_files` helper method) and then iterates through this list, calling `image_metadata_randomizer.randomize_metadata` for each file.
+
 ## Future Enhancements
 
 Potential improvements to the codebase:

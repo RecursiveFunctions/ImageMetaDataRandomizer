@@ -17,24 +17,39 @@ This tutorial will guide you through using the Image Metadata Randomizer to prot
    - On macOS/Linux: `source venv/bin/activate`
 5. Install the required libraries:
    ```
-   pip install pillow piexif
+   pip install -r requirements.txt # Installs Pillow, piexif, ExifRead, PySide6
    ```
 
-### Step 2: Run the Script (Easy Method)
+### Step 2: Run the GUI (Recommended)
 
 1. With your virtual environment activated, run:
    ```
+   python metadata_gui.py
+   ```
+2. The application window will open.
+3. **Add Files/Folders**:
+    - Drag image files or folders directly onto the "Drag and Drop" area.
+    - *Or*, click "Select Files" or "Select Folder" to browse.
+4. **Review List**: Check the list to ensure the correct items are added.
+5. **Randomize**: Click the "Randomize Metadata" button.
+6. **Done**: Modified images are saved in their original locations with a `modified_` prefix.
+
+### Alternative: Use the Command Line
+
+If you prefer the command line:
+
+1. Run the script providing the image path(s):
+   ```
    python image_metadata_randomizer.py "C:\Users\YourName\Pictures\vacation.jpg"
    ```
-   
-   Just replace the path with the path to your image in quotes.
-   
-2. You'll see output showing the metadata changes
-3. The new image is saved in the same folder as your original with a "modified_" prefix
+   Replace the path with the path to your image in quotes.
 
-### Step 3: Run with Multiple Images (Batch Processing)
+2. You'll see output showing the metadata changes.
+3. The new image is saved in the same folder as your original with a "modified_" prefix.
 
-To process multiple images at once:
+### Command Line Batch Processing
+
+To process multiple images at once via command line:
 
 ```
 python image_metadata_randomizer.py "C:\Path\To\Image1.jpg" "C:\Path\To\Image2.jpg"
@@ -46,9 +61,9 @@ Or to process all images in a folder:
 python image_metadata_randomizer.py --folder "C:\Users\YourName\Pictures\Vacation"
 ```
 
-### Alternative: Edit the Script Directly
+### Old Method: Edit the Script Directly (Not Recommended)
 
-If you prefer to edit the script directly:
+Previously, you could edit the script directly:
 
 1. Open `image_metadata_randomizer.py` in a text editor
 2. Locate this line near the bottom:

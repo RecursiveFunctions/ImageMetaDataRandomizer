@@ -16,6 +16,7 @@ This tool creates a new copy of your image with completely randomized metadata, 
 
 ## ✨ Features
 
+- **Graphical User Interface (GUI)**: Easy-to-use interface with drag-and-drop support.
 - **Complete Metadata Replacement**: Creates a new image with freshly generated metadata
 - **Random Camera Information**: Generates fake camera make, model, and software info
 - **Date/Time Randomization**: Randomizes all timestamps within the last two years
@@ -37,14 +38,30 @@ This tool creates a new copy of your image with completely randomized metadata, 
    ```
 3. Install required dependencies:
    ```bash
-   pip install pillow piexif
+   pip install -r requirements.txt # Installs Pillow, piexif, ExifRead, PySide6
    ```
 
 ## 📋 Usage
 
+### Graphical User Interface (Recommended)
+
+The easiest way to use the tool is via the graphical interface:
+
+1.  Ensure you have installed the dependencies (including PySide6) as shown above.
+2.  Run the GUI script:
+    ```bash
+    python metadata_gui.py
+    ```
+3.  The application window will appear:
+    - **Drag and Drop**: Drag image files or folders containing images directly onto the designated area.
+    - **Select Buttons**: Click "Select Files" to browse for individual image files or "Select Folder" to choose a directory.
+    - **File List**: Selected items will appear in the list.
+    - **Randomize**: Click the "Randomize Metadata" button to process all images in the list.
+4.  Modified images will be saved in their original directories with a `modified_` prefix.
+
 ### Command Line Interface
 
-The easiest way to use the tool is with the command line interface:
+Alternatively, you can still use the command line interface:
 
 ```bash
 # Process a single image
@@ -133,9 +150,8 @@ Contributions are welcome! Feel free to submit pull requests or suggest new feat
 
 ## 🚀 Planned Features
 
-- **Graphical User Interface (GUI)**: A user-friendly interface for those who prefer not to use the command line
 - **Custom Randomization Profiles**: Ability to select which metadata fields to randomize
-- **Batch Processing Enhancements**: Progress bar and more detailed reporting
+- **Batch Processing Enhancements**: Progress bar and more detailed reporting for CLI and GUI
 - **Additional Image Format Support**: Extending beyond JPEG to support PNG, TIFF, and other formats
 
 ---

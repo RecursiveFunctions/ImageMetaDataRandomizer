@@ -1,2 +1,4 @@
 piexif==1.1.3
 pillow==11.1.0
+ExifRead
+PySide6
