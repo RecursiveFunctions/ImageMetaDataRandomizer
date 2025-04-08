@@ -271,20 +271,23 @@ def randomize_metadata(image_path, randomize_all=True, randomize_windows_props=T
         print(f"Error processing image: {e}")
         return None
 
-def display_metadata(image_path):
+def get_metadata_string(image_path):
+    """Reads EXIF data from an image and returns it as a formatted string."""
+    output_lines = []
     try:
         image = Image.open(image_path)
-        
+
         # Check if image has EXIF data
         if 'exif' not in image.info:
-            print(f"No EXIF data found in {image_path}")
-            return
-            
+            return f"No EXIF data found in {os.path.basename(image_path)}"
+
         exif_dict = piexif.load(image.info.get('exif', b''))
-        
-        print(f"Metadata for {image_path}:")
+
+        output_lines.append(f"Metadata for: {os.path.basename(image_path)}")
+        output_lines.append("="*30)
+
         if '0th' in exif_dict and exif_dict['0th']:
-            print("Basic Image Information:")
+            output_lines.append("Basic Image Information:")
             for tag, value in exif_dict['0th'].items():
                 tag_name = piexif.TAGS['0th'].get(tag, {}).get('name', str(tag))
                 if isinstance(value, bytes):
@@ -292,121 +295,127 @@ def display_metadata(image_path):
                         value = value.decode('ascii', errors='replace')
                     except:
                         value = str(value)
-                print(f"  {tag_name}: {value}")
-                
+                output_lines.append(f"  {tag_name}: {value}")
+            output_lines.append("") # Add spacing
+
         if 'Exif' in exif_dict and exif_dict['Exif']:
-            print("\nExif Information:")
+            output_lines.append("Exif Information:")
             for tag, value in exif_dict['Exif'].items():
                 tag_name = piexif.TAGS['Exif'].get(tag, {}).get('name', str(tag))
-                if isinstance(value, bytes):
+                # Special formatting for rational types (like ExposureTime, FNumber)
+                if isinstance(value, tuple) and len(value) == 2 and isinstance(value[0], int) and isinstance(value[1], int) and value[1] != 0:
+                     if tag_name == "ExposureTime":
+                         value_str = f"1/{int(value[1]/value[0])}s" if value[0] != 0 else "0s"
+                     elif tag_name == "FNumber":
+                         value_str = f"f/{value[0]/value[1]:.1f}"
+                     elif tag_name == "FocalLength":
+                          value_str = f"{value[0]/value[1]:.1f}mm"
+                     else:
+                         value_str = f"{value[0]}/{value[1]}"
+                elif isinstance(value, bytes):
                     try:
-                        value = value.decode('ascii', errors='replace')
+                        value_str = value.decode('ascii', errors='replace')
                     except:
-                        value = str(value)
-                print(f"  {tag_name}: {value}")
-                
+                        value_str = str(value)
+                else:
+                    value_str = str(value)
+                output_lines.append(f"  {tag_name}: {value_str}")
+            output_lines.append("")
+
         if 'GPS' in exif_dict and exif_dict['GPS']:
-            print("\nGPS Information:")
-            # Extract GPS coordinates if available
+            output_lines.append("GPS Information:")
             lat_ref = long_ref = None
             latitude = longitude = None
-            
-            if piexif.GPSIFD.GPSLatitudeRef in exif_dict['GPS']:
-                lat_ref = exif_dict['GPS'][piexif.GPSIFD.GPSLatitudeRef]
-                if isinstance(lat_ref, bytes):
-                    lat_ref = lat_ref.decode('ascii', errors='replace')
-            
-            if piexif.GPSIFD.GPSLongitudeRef in exif_dict['GPS']:
-                long_ref = exif_dict['GPS'][piexif.GPSIFD.GPSLongitudeRef]
-                if isinstance(long_ref, bytes):
-                    long_ref = long_ref.decode('ascii', errors='replace')
-            
-            if piexif.GPSIFD.GPSLatitude in exif_dict['GPS']:
-                lat_dms = exif_dict['GPS'][piexif.GPSIFD.GPSLatitude]
-                try:
+            gps_data_found = False
+
+            # Simplified GPS coordinate extraction/formatting
+            try:
+                lat_dms = exif_dict['GPS'].get(piexif.GPSIFD.GPSLatitude)
+                lat_ref = exif_dict['GPS'].get(piexif.GPSIFD.GPSLatitudeRef)
+                long_dms = exif_dict['GPS'].get(piexif.GPSIFD.GPSLongitude)
+                long_ref = exif_dict['GPS'].get(piexif.GPSIFD.GPSLongitudeRef)
+
+                if lat_dms and lat_ref and long_dms and long_ref:
+                    if isinstance(lat_ref, bytes): lat_ref = lat_ref.decode('ascii', 'replace')
+                    if isinstance(long_ref, bytes): long_ref = long_ref.decode('ascii', 'replace')
+
                     degrees = lat_dms[0][0] / lat_dms[0][1]
                     minutes = lat_dms[1][0] / lat_dms[1][1]
                     seconds = lat_dms[2][0] / lat_dms[2][1]
                     latitude = degrees + minutes/60 + seconds/3600
-                    if lat_ref == 'S':
-                        latitude = -latitude
-                except (IndexError, ZeroDivisionError):
-                    latitude = None
-            
-            if piexif.GPSIFD.GPSLongitude in exif_dict['GPS']:
-                long_dms = exif_dict['GPS'][piexif.GPSIFD.GPSLongitude]
-                try:
+                    if lat_ref == 'S': latitude = -latitude
+
                     degrees = long_dms[0][0] / long_dms[0][1]
                     minutes = long_dms[1][0] / long_dms[1][1]
                     seconds = long_dms[2][0] / long_dms[2][1]
                     longitude = degrees + minutes/60 + seconds/3600
-                    if long_ref == 'W':
-                        longitude = -longitude
-                except (IndexError, ZeroDivisionError):
-                    longitude = None
-            
-            if latitude is not None and longitude is not None:
-                print(f"  GPS Coordinates: {latitude:.6f}, {longitude:.6f} ({lat_ref}, {long_ref})")
-            
-            if piexif.GPSIFD.GPSAltitude in exif_dict['GPS']:
-                try:
-                    alt = exif_dict['GPS'][piexif.GPSIFD.GPSAltitude]
-                    altitude = alt[0] / alt[1]
-                    alt_ref = exif_dict['GPS'].get(piexif.GPSIFD.GPSAltitudeRef, 0)
-                    altitude_str = f"{altitude:.2f}m"
-                    if alt_ref == 1:  # Below sea level
-                        altitude_str = f"-{altitude_str}"
-                    print(f"  GPS Altitude: {altitude_str}")
-                except (IndexError, ZeroDivisionError):
-                    pass
-            
-            # Display other GPS tags if present
+                    if long_ref == 'W': longitude = -longitude
+
+                    output_lines.append(f"  GPS Coordinates: {latitude:.6f}, {longitude:.6f} ({lat_ref}, {long_ref})")
+                    gps_data_found = True
+
+            except (KeyError, IndexError, ZeroDivisionError, TypeError) as gps_ex:
+                output_lines.append(f"  Could not parse GPS coordinates: {gps_ex}")
+
+            # Display other GPS tags
             for tag, value in exif_dict['GPS'].items():
-                if tag not in [piexif.GPSIFD.GPSLatitude, piexif.GPSIFD.GPSLatitudeRef,
-                              piexif.GPSIFD.GPSLongitude, piexif.GPSIFD.GPSLongitudeRef,
-                              piexif.GPSIFD.GPSAltitude, piexif.GPSIFD.GPSAltitudeRef]:
+                 if tag not in [piexif.GPSIFD.GPSLatitude, piexif.GPSIFD.GPSLongitude]: # Avoid duplicate display
                     tag_name = piexif.TAGS['GPS'].get(tag, {}).get('name', str(tag))
                     if isinstance(value, bytes):
                         try:
                             value = value.decode('ascii', errors='replace')
                         except:
                             value = str(value)
-                    print(f"  {tag_name}: {value}")
+                    elif isinstance(value, tuple) and len(value) > 0 and isinstance(value[0], tuple): # Handle timestamp, etc.
+                        value = ", ".join([f"{v[0]}/{v[1]}" if isinstance(v, tuple) and len(v)==2 else str(v) for v in value])
+                    output_lines.append(f"  {tag_name}: {value}")
+                    gps_data_found = True
+
+            if not gps_data_found:
+                 output_lines.append("  No parsable GPS data tags found.")
+
         elif 'GPS' in exif_dict:
-            print("\nGPS Information:")
-            print("  No GPS data")
+            output_lines.append("GPS Information:")
+            output_lines.append("  (Empty GPS IFD present)")
+
+        return "\n".join(output_lines)
+
+    except FileNotFoundError:
+        return f"Error: File not found - {os.path.basename(image_path)}"
     except Exception as e:
-        print(f"Error reading metadata: {e}")
+        return f"Error reading metadata for {os.path.basename(image_path)}: {e}"
 
 def process_images(image_paths, display_before=False, display_after=True, randomize_windows_props=True):
     """Process multiple images from a list of paths."""
     results = []
-    
+
     for image_path in image_paths:
         if not os.path.exists(image_path):
             print(f"Error: Image '{image_path}' not found")
             continue
-            
+
         if not image_path.lower().endswith(('.jpg', '.jpeg')):
             print(f"Warning: '{image_path}' is not a JPEG file. Only JPEG files are supported.")
             continue
-            
+
         if display_before:
             print("\n=== Original Metadata ===")
-            display_metadata(image_path)
-            
+            # Use the new function, but still print for CLI usage
+            print(get_metadata_string(image_path))
+
         output_path = randomize_metadata(image_path, randomize_windows_props=randomize_windows_props)
-        
+
         if output_path and display_after:
             print("\n=== New Randomized Metadata ===")
-            display_metadata(output_path)
-            
+            # Use the new function, but still print for CLI usage
+            print(get_metadata_string(output_path))
+
         results.append({
             'original': image_path,
             'modified': output_path,
             'success': output_path is not None
         })
-    
+
     return results
 
 def main():
