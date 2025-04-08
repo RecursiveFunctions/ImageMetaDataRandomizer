@@ -345,23 +345,24 @@ A GUI has been developed using PySide6 to provide a more user-friendly way to in
 - **Framework**: PySide6 (Qt for Python)
 - **Main Window**: `MetadataRandomizerGUI` (inherits from `QWidget`)
 - **Key Components**:
+    - `QSplitter`: Divides the main window horizontally into a left panel (controls, list) and a right panel (metadata preview).
     - `DragDropArea`: A custom `QLabel` subclass to handle drag-and-drop operations for files and folders.
-    - `QListWidget`: Displays the list of selected files and folders.
+    - `QListWidget`: Displays the list of selected files and folders. Its `currentItemChanged` signal is connected to `update_metadata_display`.
+    - `QTextEdit`: Located in the right panel, displays the metadata preview. It's read-only and styled with a black background and green text.
     - `QPushButton`: Buttons for selecting files ("Select Files"), selecting folders ("Select Folder"), and initiating the process ("Randomize Metadata").
     - `QFileDialog`: Used for browsing and selecting files/folders.
     - `QVBoxLayout`, `QHBoxLayout`: Used for organizing widgets in the UI.
-    - `QLabel`: Used for text labels and the status bar.
-- **Functionality**:
-    - Allows users to select individual image files or entire folders containing images.
     - Supports dragging and dropping files/folders directly onto the application window.
     - Collects all image files from selected items (recursively searching within selected folders).
     - Calls the core `randomize_metadata` function for each identified image file.
+    - Displays metadata for the currently selected image file in the right-hand sidebar using `get_metadata_string`.
+    - After randomization, updates the sidebar to show the metadata of the *modified* version of the selected file (if applicable).
     - Provides user feedback via status messages and dialog boxes (e.g., success, error messages).
     - Basic styling is applied for a cleaner appearance.
 
 ### Interaction with Core Logic
 
-The GUI's `start_randomization` method gathers the list of target image files from the `QListWidget` (using the `get_all_image_files` helper method) and then iterates through this list, calling `image_metadata_randomizer.randomize_metadata` for each file.
+The GUI's `start_randomization` method gathers the list of target image files from the `QListWidget` (using the `get_all_image_files` helper method) and then iterates through this list, calling `image_metadata_randomizer.randomize_metadata` for each file. The `update_metadata_display` slot is called whenever the selection in the `QListWidget` changes, fetching and displaying metadata using `image_metadata_randomizer.get_metadata_string`. After batch processing, `start_randomization` checks if a file was selected and successfully processed, and if so, updates the display with the modified file's metadata.
 
 ## Future Enhancements
 

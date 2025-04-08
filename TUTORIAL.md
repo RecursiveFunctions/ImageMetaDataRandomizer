@@ -31,8 +31,9 @@ This tutorial will guide you through using the Image Metadata Randomizer to prot
     - Drag image files or folders directly onto the "Drag and Drop" area.
     - *Or*, click "Select Files" or "Select Folder" to browse.
 4. **Review List**: Check the list to ensure the correct items are added.
-5. **Randomize**: Click the "Randomize Metadata" button.
-6. **Done**: Modified images are saved in their original locations with a `modified_` prefix.
+5. **Preview Metadata (Optional)**: Click on an individual image file in the list on the left. Its current metadata will appear in the sidebar on the right.
+6. **Randomize**: Click the "Randomize Metadata" button.
+7. **Check Results**: Modified images are saved in their original locations with a `modified_` prefix. If you had an image selected before clicking randomize, the sidebar will update to show the *new* metadata for the modified file.
 
 ### Alternative: Use the Command Line
 

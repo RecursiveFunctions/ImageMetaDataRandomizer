@@ -17,6 +17,7 @@ This tool creates a new copy of your image with completely randomized metadata, 
 ## ✨ Features
 
 - **Graphical User Interface (GUI)**: Easy-to-use interface with drag-and-drop support.
+- **Metadata Preview**: Sidebar shows metadata for the selected image (before and after randomization).
 - **Complete Metadata Replacement**: Creates a new image with freshly generated metadata
 - **Random Camera Information**: Generates fake camera make, model, and software info
 - **Date/Time Randomization**: Randomizes all timestamps within the last two years
@@ -56,8 +57,10 @@ The easiest way to use the tool is via the graphical interface:
     - **Drag and Drop**: Drag image files or folders containing images directly onto the designated area.
     - **Select Buttons**: Click "Select Files" to browse for individual image files or "Select Folder" to choose a directory.
     - **File List**: Selected items will appear in the list.
+    - **Metadata Preview**: Select an image file in the list to see its current metadata in the sidebar on the right.
     - **Randomize**: Click the "Randomize Metadata" button to process all images in the list.
 4.  Modified images will be saved in their original directories with a `modified_` prefix.
+5.  If an image was selected in the list before randomizing, the sidebar will update to show the *new* metadata of the modified file.
 
 ### Command Line Interface
 
@@ -151,9 +154,8 @@ Contributions are welcome! Feel free to submit pull requests or suggest new feat
 ## 🚀 Planned Features
 
 - **Custom Randomization Profiles**: Ability to select which metadata fields to randomize
-- **Batch Processing Enhancements**: Progress bar and more detailed reporting for CLI and GUI
 - **Additional Image Format Support**: Extending beyond JPEG to support PNG, TIFF, and other formats
-
+- **Realistic metadata**: Right now it's pretty easy to tell if the metadata is randomized because it shows nonsensical values. It should be able to fool people and automated systems with plausible metadata combinations.
 ---
 
 *This tool is designed for legitimate privacy protection when sharing images online. Please use responsibly.* 
