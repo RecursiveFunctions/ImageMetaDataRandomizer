@@ -8,13 +8,14 @@ import subprocess
 import sys
 import argparse
 import glob
+import string
 
 def randomize_metadata(image_path, randomize_all=True, randomize_windows_props=True):
     # Get the directory and filename from the input path
     directory = os.path.dirname(image_path)
     filename = os.path.basename(image_path)
     # Create output path in the same directory but with "modified_" prefix
-    output_path = os.path.join(directory, f"modified_{filename}")
+    output_path = os.path.join(directory, generate_random_filename())
     
     try:
         # Open the image
@@ -270,6 +271,12 @@ def randomize_metadata(image_path, randomize_all=True, randomize_windows_props=T
     except Exception as e:
         print(f"Error processing image: {e}")
         return None
+    
+def generate_random_filename():
+    characters = string.ascii_letters + string.digits
+    length = random.randint(10, 53)
+    filename = ''.join(random.choices(characters, k=length)) + '.jpg'
+    return filename
 
 def get_metadata_string(image_path):
     """Reads EXIF data from an image and returns it as a formatted string."""
@@ -448,7 +455,7 @@ def main():
         image_paths.extend(glob.glob(os.path.join(args.folder, '*.jpeg')))
         
         if not image_paths:
-            print(f"No jpg/jpeg files found in folder '{args.folder}'")
+            print(f"No jpg/jpeg/png files found in folder '{args.folder}'")
             return
             
         print(f"Found {len(image_paths)} images in folder '{args.folder}'")
